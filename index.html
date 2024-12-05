@@ -1,0 +1,342 @@
+<html><head><base href="/">
+<title>Global Currency Converter & Information Hub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --primary: #000000;
+    --secondary: #0066cc;
+    --accent: #ffffff;
+    --light: #f0f0f0;
+    --dark: #1a1a1a;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--dark), var(--primary));
+    min-height: 100vh;
+    color: white;
+    box-sizing: border-box;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .converter-box {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .currency-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  h1, h2 {
+    color: var(--accent);
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .input-group {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-direction: column;
+  }
+
+  select, input {
+    padding: 0.8rem;
+    border: 2px solid var(--secondary);
+    border-radius: 8px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--dark);
+    font-size: 1rem;
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  select {
+    cursor: pointer;
+    white-space: normal;
+    text-overflow: ellipsis;
+  }
+
+  select option {
+    background: white;
+    color: var(--dark);
+    padding: 10px;
+    white-space: normal;
+  }
+
+  button {
+    background: var(--secondary);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1.1rem;
+    font-weight: bold;
+    width: 100%;
+  }
+
+  button:hover {
+    background: #0052cc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.4);
+  }
+
+  #result {
+    font-size: 1.5rem;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--accent);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    word-wrap: break-word;
+  }
+
+  .currency-card {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 1.5rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .exchange-rate {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(0, 102, 204, 0.2);
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .loading {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  @media (max-width: 768px) {
+    body {
+      padding: 10px;
+    }
+
+    .container {
+      width: 100%;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+
+    .converter-box, .currency-info {
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+    }
+
+    #result {
+      font-size: 1.2rem;
+    }
+
+    .exchange-rate {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    select, input {
+      width: 100%;
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    .input-group {
+      flex-direction: column;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .input-group {
+      flex-direction: row;
+    }
+    
+    select, input {
+      width: 33.33%;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Global Currency Converter</h1>
+  
+  <div class="converter-box">
+    <div class="input-group">
+      <input type="number" id="amount" placeholder="Amount" value="1" min="0">
+      <select id="from-currency"></select>
+      <select id="to-currency"></select>
+    </div>
+    <button onclick="convertCurrency()">Convert Currency</button>
+    <div id="result"></div>
+  </div>
+
+  <div class="currency-info">
+    <h2>Currency Information</h2>
+    <div id="currency-details"></div>
+  </div>
+</div>
+
+<script>
+const currencies = {};
+
+async function initializeCurrencies() {
+  try {
+    const response = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await response.json();
+    
+    Object.keys(data.rates).forEach(currency => {
+      currencies[currency] = {
+        rate: data.rates[currency],
+        name: getCurrencyFullName(currency)
+      };
+    });
+
+    populateSelects();
+    showCurrencyInfo();
+  } catch (error) {
+    console.error('Error fetching currency data:', error);
+  }
+}
+
+function getCurrencyFullName(code) {
+  const currencyNames = {
+    USD: 'United States Dollar',
+    EUR: 'Euro',
+    GBP: 'British Pound Sterling',
+    JPY: 'Japanese Yen',
+    AUD: 'Australian Dollar',
+    CAD: 'Canadian Dollar',
+    CHF: 'Swiss Franc',
+    CNY: 'Chinese Yuan',
+    INR: 'Indian Rupee',
+    NZD: 'New Zealand Dollar',
+    BRL: 'Brazilian Real',
+    ZAR: 'South African Rand',
+    RUB: 'Russian Ruble',
+    MXN: 'Mexican Peso',
+    SGD: 'Singapore Dollar',
+    HKD: 'Hong Kong Dollar',
+    SEK: 'Swedish Krona',
+    KRW: 'South Korean Won',
+    TRY: 'Turkish Lira',
+    THB: 'Thai Baht'
+  };
+  return currencyNames[code] || code;
+}
+
+function populateSelects() {
+  const fromSelect = document.getElementById('from-currency');
+  const toSelect = document.getElementById('to-currency');
+  
+  fromSelect.innerHTML = '';
+  toSelect.innerHTML = '';
+  
+  Object.keys(currencies).forEach(currency => {
+    const optionText = `${currency} - ${currencies[currency].name}`;
+    const option1 = new Option(optionText, currency);
+    const option2 = new Option(optionText, currency);
+    
+    fromSelect.add(option1);
+    toSelect.add(option2);
+  });
+
+  fromSelect.value = 'USD';
+  toSelect.value = 'EUR';
+}
+
+async function convertCurrency() {
+  const amount = document.getElementById('amount').value;
+  const fromCurrency = document.getElementById('from-currency').value;
+  const toCurrency = document.getElementById('to-currency').value;
+  
+  const resultDiv = document.getElementById('result');
+  resultDiv.classList.add('loading');
+
+  try {
+    const response = await fetch(`https://open.er-api.com/v6/latest/${fromCurrency}`);
+    const data = await response.json();
+    
+    const rate = data.rates[toCurrency];
+    const result = (amount * rate).toFixed(2);
+    
+    resultDiv.innerHTML = `${amount} ${fromCurrency} = ${result} ${toCurrency}`;
+    resultDiv.classList.remove('loading');
+    
+    showCurrencyInfo(fromCurrency, toCurrency, rate);
+  } catch (error) {
+    resultDiv.innerHTML = 'Error converting currency. Please try again.';
+    resultDiv.classList.remove('loading');
+  }
+}
+
+function showCurrencyInfo(fromCurrency, toCurrency, rate) {
+  const detailsDiv = document.getElementById('currency-details');
+  
+  if (!fromCurrency || !toCurrency) {
+    detailsDiv.innerHTML = '<p>Select currencies to see detailed information.</p>';
+    return;
+  }
+
+  detailsDiv.innerHTML = `
+    <div class="currency-card">
+      <h3>${currencies[fromCurrency].name} (${fromCurrency})</h3>
+      <p>Base currency for this conversion</p>
+      <div class="exchange-rate">
+        <span>1 ${fromCurrency} =</span>
+        <span>${rate} ${toCurrency}</span>
+      </div>
+    </div>
+    
+    <div class="currency-card">
+      <h3>${currencies[toCurrency].name} (${toCurrency})</h3>
+      <p>Target currency for this conversion</p>
+      <div class="exchange-rate">
+        <span>1 ${toCurrency} =</span>
+        <span>${(1/rate).toFixed(4)} ${fromCurrency}</span>
+      </div>
+    </div>
+  `;
+}
+
+// Initialize the application
+initializeCurrencies();
+</script>
+</body></html>
